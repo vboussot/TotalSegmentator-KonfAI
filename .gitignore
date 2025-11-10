@@ -1,0 +1,7 @@
+__pycache__
+totalsegmentator_konfai.egg-info
+.env
+*.mha
+.mypy_cache
+dist
+Seg.nii.gz
