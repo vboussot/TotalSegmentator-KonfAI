@@ -74,7 +74,7 @@ totalsegmentator-konfai -i patient01.nii.gz -o seg_patient01.nii.gz --gpu 0 --ta
 ## 📖 Reference
 
 This package is based on the original **[TotalSegmentator](https://github.com/wasserth/TotalSegmentator)** by  
-**Wasserthal et al.**, a deep-learning-based method for brain MRI segmentation.
+**Wasserthal et al.**, a deep learning framework for whole-body CT and MR segmentation.
 
 For scientific use, please cite the original TotalSegmentator work in addition to this CLI tool.
 
