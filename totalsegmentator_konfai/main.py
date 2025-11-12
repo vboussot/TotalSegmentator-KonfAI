@@ -1,14 +1,13 @@
 import argparse
 import importlib.metadata
 import os
-import shutil
 import subprocess
 import sys
 import tempfile
 from pathlib import Path
 
 import SimpleITK as sitk  # noqa: N813
-from huggingface_hub import hf_hub_download
+from konfai.utils.utils import get_available_models_on_hf_repo
 
 SUPPORTED_EXTENSIONS = [
     "mha",
@@ -21,53 +20,7 @@ SUPPORTED_EXTENSIONS = [
     "gipl.gz",  # GIPL
 ]
 
-
-def ensure_konfai_available() -> None:
-    from shutil import which
-
-    if which("konfai") is None:
-        print("❌ 'konfai' CLI not found in PATH. Install/activate KonfAI.", file=sys.stderr)
-        sys.exit(1)
-
-
-def _get_available_models() -> list[str]:
-    return ["total", "total_mr"]
-
-
-def get_models_name(task: str, fast: bool) -> tuple[list[str], str]:
-    models_name = []
-    inference_file = ""
-    if task == "total":
-        models_name = ["M291.pt", "M292.pt", "M293.pt", "M294.pt", "M295.pt"] if not fast else ["M297.pt"]
-        inference_file = "Prediction_CT.yml" if not fast else "Prediction_CT_Fast.yml"
-
-    if task == "total_mr":
-        models_name = ["M850.pt", "M851.pt"] if not fast else ["M852.pt"]
-        inference_file = "Prediction_MR.yml" if not fast else "Prediction_MR_Fast.yml"
-
-    return models_name, inference_file
-
-
-def download_models(models_name: list[str], inference_file: str) -> tuple[list[str], str, str]:
-    try:
-        models_path = []
-        for model_name in models_name:
-            models_path.append(
-                hf_hub_download(
-                    repo_id="VBoussot/TotalSegmentator-KonfAI", filename=model_name, repo_type="model", revision="main"
-                )
-            )
-        model_path = hf_hub_download(
-            repo_id="VBoussot/TotalSegmentator-KonfAI", filename="Model.py", repo_type="model", revision="main"
-        )
-
-        inference_file_path = hf_hub_download(
-            repo_id="VBoussot/TotalSegmentator-KonfAI", filename=inference_file, repo_type="model", revision="main"
-        )
-        return models_path, inference_file_path, model_path
-    except Exception as e:
-        print(f"❌ Error downloading models/config from Hugging Face: {e}", file=sys.stderr)
-        sys.exit(1)
+TOTAL_SEGMENTATOR_KONFAI_REPO = "VBoussot/TotalSegmentator-KonfAI"
 
 
 def main():
@@ -98,7 +51,7 @@ def main():
     parser.add_argument(
         "-ta",
         "--task",
-        choices=_get_available_models(),
+        choices=get_available_models_on_hf_repo(TOTAL_SEGMENTATOR_KONFAI_REPO),
         help="Select which model to use. This determines what is predicted.",
         default="total",
     )
@@ -146,20 +99,10 @@ def main():
         print(f"   Supported: {', '.join(SUPPORTED_EXTENSIONS)}", file=sys.stderr)
         sys.exit(1)
 
-    ensure_konfai_available()
-    models_name, inference_file = get_models_name(args.task, args.fast)
-    models_path, inference_file_path, model_path = download_models(models_name, inference_file)
-
     with tempfile.TemporaryDirectory() as tmpdir_str:
         tmpdir = Path(tmpdir_str)
         dataset_p = tmpdir / "Dataset" / "P001"
         dataset_p.mkdir(parents=True, exist_ok=True)
-
-        try:
-            shutil.copy2(model_path, tmpdir / "Model.py")
-        except Exception as e:
-            print(f"❌ Cannot copy Model.py into temp dir: {e}", file=sys.stderr)
-            sys.exit(1)
 
         # Convert input to expected NIfTI
         vol_out = dataset_p / "Volume.nii.gz"
@@ -176,12 +119,10 @@ def main():
 
         cmd = [
             "konfai",
-            "PREDICTION",
+            "PREDICTION_HF",
             "-y",
-            "--MODEL",
-            ":".join(models_path),
             "--config",
-            inference_file_path,
+            f"{TOTAL_SEGMENTATOR_KONFAI_REPO}:{args.task}",
         ]
         if args.gpu:
             cmd += ["--gpu", args.gpu]
