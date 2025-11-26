@@ -118,11 +118,13 @@ def main():
             sys.exit(1)
 
         cmd = [
-            "konfai",
-            "PREDICTION_HF",
-            "-y",
-            "--config",
+            "konfai-apps",
+            "infer",
             f"{TOTAL_SEGMENTATOR_KONFAI_REPO}:{args.task}",
+            "-i",
+            str(args.input),
+            "-o",
+            str(tmpdir),
         ]
         if args.gpu:
             cmd += ["--gpu", args.gpu]
@@ -138,8 +140,7 @@ def main():
         except FileNotFoundError:
             print("❌ 'konfai' executable not found. Ensure it is installed and on PATH.", file=sys.stderr)
             sys.exit(1)
-
-        pred = tmpdir / "Predictions" / "TotalSegmentator" / "Dataset" / "P001" / "Seg.mha"
+        pred = tmpdir / "TotalSegmentator" / "Output" / "P000" / "Output.mha"
         if not pred.exists():
             print(f"❌ Prediction not found at: {pred}\n   Check KonfAI logs for details.", file=sys.stderr)
             sys.exit(1)
